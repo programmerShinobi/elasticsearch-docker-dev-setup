@@ -63,6 +63,7 @@ container), **locking memory to prevent swap**, **disabling unused features**
 |------|-------------------|
 | NestJS connects via `localhost` | Port `9200:9200` published to the host |
 | System stays fast | `mem_limit: 1536m` + `ES_JAVA_OPTS=-Xms1g -Xmx1g` |
+| CPU stays under control | `cpus: 4.0` (half of 8 threads) + `node.processors=4` |
 | No swap thrash | `bootstrap.memory_lock=true` + `memlock` ulimit |
 | Never RED | Single-node, primaries always allocate; healthcheck on green/yellow |
 | No restart loops | `restart: unless-stopped` + `vm.max_map_count` preset |
@@ -160,8 +161,10 @@ Every line of [`docker-compose.yml`](docker-compose.yml) maps to a requirement:
 | `xpack.ml.enabled` | `false` | Drops ML, saves memory |
 | `ES_JAVA_OPTS` | `-Xms1g -Xmx1g` | Fixed 1 GB heap (min == max) |
 | `bootstrap.memory_lock` | `true` | Locks heap in RAM → no swapping |
+| `node.processors` | `4` | Sizes thread pools for the 4-CPU cap |
 | `ulimits.memlock` | `-1 / -1` | Lets memory locking actually work |
 | `mem_limit` | `1536m` | Container can never exceed 1.5 GB |
+| `cpus` | `4.0` | Caps ES at 4/8 logical CPUs → host stays responsive |
 | `ports` | `9200:9200` | Exposes ES to host-local NestJS |
 | `restart` | `unless-stopped` | Survives reboots / daemon restarts |
 | `volumes` | `esdata:` | Indices persist across `down`/`up` |

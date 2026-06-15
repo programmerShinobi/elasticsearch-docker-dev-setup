@@ -65,6 +65,15 @@ raise `mem_limit` accordingly), or delete unused indices.
 
 ## Keeping CPU under control
 
-- This setup targets **no sustained CPU above 80%**. Bulk-indexing large datasets
-  is the main thing that spikes CPU — throttle with smaller `_bulk` batches.
+- **Hard CPU cap** (`cpus: 4.0`) — the container is limited to 4 of the 8 logical
+  CPUs on the i7-1185G7 (4 cores / 8 threads), i.e. ≤ 50% of total. Even at full
+  load ES stays well under the **no sustained CPU above 80%** target, leaving 4
+  threads for your IDE, browser, and NestJS.
+- **`node.processors=4`** — tells ES to size its thread pools for 4 CPUs so they
+  match the cgroup cap (avoids oversized pools and a startup warning).
+- Bulk-indexing large datasets is the main thing that spikes CPU — throttle with
+  smaller `_bulk` batches.
 - Avoid running heavy aggregations in tight loops during development.
+
+> On a machine with more cores, raise `cpus` (and `node.processors` to match).
+> Rule of thumb: cap ES at ~half your logical CPUs for a comfortable dev box.
