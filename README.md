@@ -15,6 +15,11 @@
 
 ---
 
+> [!TIP]
+> **New to Elasticsearch, Docker, or NestJS?** Start with the zero-assumptions
+> **[Beginner's Tutorial](docs/TUTORIAL.md)** — it explains every term and walks
+> you through your first run step by step.
+
 ## 📖 Table of Contents
 
 - [Overview](#-overview)
@@ -147,6 +152,7 @@ make logs    # follow logs
 make down    # stop (keeps data)
 ```
 
+> Brand new to all this? Read the **[Beginner's Tutorial](docs/TUTORIAL.md)** first.
 > Full step-by-step walkthrough: **[docs/SETUP.md](docs/SETUP.md)**
 
 ---
@@ -215,10 +221,27 @@ A healthy response from step 3 looks like:
 
 ## 🔌 NestJS Integration
 
-NestJS connects from the **host** over `localhost`. Minimal example:
+> [!IMPORTANT]
+> **Scope:** this repository ships the **Elasticsearch infrastructure only** —
+> the `docker-compose.yml` and its supporting tooling. The
+> [`examples/nestjs/`](examples/nestjs/) directory is **reference material, not a
+> runnable application.** It deliberately omits `package.json`, `tsconfig.json`,
+> and a bootstrap entrypoint. The files exist to document the one integration
+> detail that trips people up — the `localhost` vs `elasticsearch` host rule —
+> and to be copied into *your* NestJS project, where they compile and run.
+
+Because NestJS runs as a normal **host** process (outside Docker), it always
+reaches the published port over `localhost`:
 
 ```ts
-// elasticsearch.module.ts
+node: 'http://localhost:9200'      // ✅ correct — host-local process
+node: 'http://elasticsearch:9200'  // ❌ resolves only inside the Docker network
+```
+
+Minimal module wiring (env-driven, no auth — security is off in dev mode):
+
+```ts
+// search.module.ts
 import { Module } from '@nestjs/common';
 import { ElasticsearchModule } from '@nestjs/elasticsearch';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -231,7 +254,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       useFactory: (config: ConfigService) => ({
         // From .env: ELASTICSEARCH_NODE=http://localhost:9200
         node: config.get<string>('ELASTICSEARCH_NODE', 'http://localhost:9200'),
-        // No auth: security is disabled in dev mode.
       }),
     }),
   ],
@@ -240,8 +262,16 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 export class SearchModule {}
 ```
 
-> A complete, runnable module + service + health check lives in
-> **[examples/nestjs/](examples/nestjs/)**.
+### What's in [`examples/nestjs/`](examples/nestjs/)
+
+| File | Responsibility |
+|------|----------------|
+| [`search.module.ts`](examples/nestjs/search.module.ts) | Registers the client from `ELASTICSEARCH_NODE` (with retries & timeout). |
+| [`search.service.ts`](examples/nestjs/search.service.ts) | Thin wrapper — health, index, search, delete; logs connectivity on boot. |
+| [`search.controller.ts`](examples/nestjs/search.controller.ts) | Demo REST endpoints proving the host → `localhost:9200` round trip. |
+
+> **How to use it:** install the deps, copy these files into your project, import
+> `SearchModule`. Step-by-step in **[examples/nestjs/README.md](examples/nestjs/README.md)**.
 
 ---
 
@@ -286,8 +316,9 @@ elasticsearch-docker-dev-setup/
 ├── scripts/
 │   └── setup-host.sh         # Sets & persists vm.max_map_count
 ├── examples/
-│   └── nestjs/               # Runnable NestJS integration example
+│   └── nestjs/               # Reference snippets to copy into your NestJS app
 ├── docs/
+│   ├── TUTORIAL.md           # Zero-assumptions beginner walkthrough
 │   ├── SETUP.md              # Step-by-step install
 │   ├── VERIFICATION.md       # Pass/fail acceptance checks
 │   ├── PERFORMANCE.md        # Memory & responsiveness tuning

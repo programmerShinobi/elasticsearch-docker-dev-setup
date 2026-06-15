@@ -9,6 +9,16 @@
 #
 set -euo pipefail
 
+# This kernel parameter applies to LINUX hosts only. On macOS and Windows,
+# Docker Desktop runs containers inside its own tuned Linux VM and already sets
+# vm.max_map_count high enough — so there is nothing to do here.
+if [ "$(uname -s)" != "Linux" ]; then
+  echo "Detected non-Linux host ($(uname -s))."
+  echo "Docker Desktop manages vm.max_map_count inside its VM — no action needed."
+  echo "→ Just run: docker compose up -d"
+  exit 0
+fi
+
 REQUIRED=262144
 KEY="vm.max_map_count"
 SYSCTL_FILE="/etc/sysctl.conf"

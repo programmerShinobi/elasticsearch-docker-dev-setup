@@ -34,4 +34,6 @@ status: ## Print cluster info (version, name)
 	@curl -s http://localhost:9200?pretty
 
 clean: ## Stop AND delete the data volume (DESTRUCTIVE)
+	@printf "⚠️  This DELETES all Elasticsearch data (the esdata volume). Continue? [y/N] "
+	@read ans; [ "$$ans" = "y" ] || [ "$$ans" = "Y" ] || { echo "Aborted."; exit 1; }
 	docker compose down -v
