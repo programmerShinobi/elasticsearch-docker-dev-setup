@@ -24,11 +24,16 @@ services:
       #     never sizes itself for all 8 threads and starves IDE/browser/NestJS ---
       - node.processors=4
 
-    # Required for bootstrap.memory_lock=true to actually lock memory.
     ulimits:
+      # Required for bootstrap.memory_lock=true to actually lock memory.
       memlock:
         soft: -1
         hard: -1
+      # Raise file-descriptor limit so many indices/segments over time never
+      # hit "too many open files" (Elastic's recommended value).
+      nofile:
+        soft: 65536
+        hard: 65536
 
     # Hard cap so Elasticsearch can never starve the host (1.5GB).
     # Heap is 1GB; the remaining ~0.5GB covers JVM/off-heap overhead.
@@ -40,8 +45,10 @@ services:
     cpus: 4.0
 
     ports:
-      # host:container — exposes ES to the local NestJS process via localhost.
-      - "9200:9200"
+      # Bind to LOOPBACK ONLY (127.0.0.1). Security is disabled in dev mode, so
+      # publishing on 0.0.0.0 would expose an unauthenticated ES to the whole
+      # LAN/WiFi. NestJS runs on the host and reaches it via localhost anyway.
+      - "127.0.0.1:9200:9200"
 
     volumes:
       # Named volume keeps indices across container restarts.
@@ -58,6 +65,17 @@ services:
       timeout: 10s
       retries: 12
       start_period: 60s
+
+    # Give Elasticsearch time to flush and shut down cleanly on `down`/reboot.
+    # Docker's default 10s can kill it mid-flush and corrupt shards (→ RED).
+    stop_grace_period: 60s
+
+    # Cap container logs so they can't fill the NVMe over weeks of running.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   esdata:

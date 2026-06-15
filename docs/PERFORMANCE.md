@@ -63,6 +63,29 @@ raise `mem_limit` accordingly), or delete unused indices.
 
 ---
 
+## Long-term safety (running for weeks/months)
+
+These are built into `docker-compose.yml` so the box stays healthy over time:
+
+- **Container logs are capped** (`logging: json-file, max-size 10m, max-file 3`)
+  — at most ~30 MB, so logs can never quietly fill the NVMe.
+- **File descriptors raised** (`ulimits.nofile=65536`) — prevents "too many open
+  files" once you accumulate many indices/segments.
+- **Clean shutdown** (`stop_grace_period: 60s`) — ES flushes before stopping on
+  `docker compose down` or reboot, avoiding shard corruption that shows up as a
+  `RED` cluster on the next start.
+- **Loopback-only port** (`127.0.0.1:9200`) — with security disabled, this keeps
+  the unauthenticated node off the LAN/WiFi.
+
+What still needs **your** attention long-term:
+
+- **Disk usage of data**: indices grow with what you index. Watch with
+  `curl 'localhost:9200/_cat/indices?v'` and delete dev indices you no longer
+  need. If the Docker disk passes ~90% full, ES turns indices read-only — see
+  [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+---
+
 ## Keeping CPU under control
 
 - **Hard CPU cap** (`cpus: 4.0`) — the container is limited to 4 of the 8 logical
