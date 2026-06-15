@@ -11,7 +11,7 @@ Use this checklist to confirm the installation is **valid**. Every item must pas
 | 1 | Container running | `docker compose ps` | State `running`, health `healthy` |
 | 2 | Service responds | `curl http://localhost:9200` | JSON with cluster info |
 | 3 | Cluster health | `curl localhost:9200/_cluster/health?pretty` | `status` is `green` or `yellow` |
-| 4 | Port open on host | `ss -tlnp \| grep 9200` | Line showing `:9200` LISTEN |
+| 4 | Port open (loopback only) | `ss -tlnp \| grep 9200` | Line showing `127.0.0.1:9200` LISTEN |
 | 5 | Memory bounded | `docker stats --no-stream elasticsearch` | `MEM USAGE` ≤ ~1.5 GiB |
 | 6 | Not restarting | `docker inspect -f '{{.RestartCount}}' elasticsearch` | Low/stable number |
 

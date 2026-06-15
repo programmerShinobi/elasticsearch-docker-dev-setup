@@ -65,8 +65,10 @@ container), **locking memory to prevent swap**, **disabling unused features**
 | System stays fast | `mem_limit: 1536m` + `ES_JAVA_OPTS=-Xms1g -Xmx1g` |
 | CPU stays under control | `cpus: 4.0` (half of 8 threads) + `node.processors=4` |
 | No swap thrash | `bootstrap.memory_lock=true` + `memlock` ulimit |
-| Never RED | Single-node, primaries always allocate; healthcheck on green/yellow |
+| Never RED | Single-node primaries; healthcheck on green/yellow; `stop_grace_period: 60s` for clean shutdown |
 | No restart loops | `restart: unless-stopped` + `vm.max_map_count` preset |
+| Not exposed on the network | `127.0.0.1:9200` loopback bind (security is off) |
+| No disk creep over time | `logging` capped at 10m × 3 + `nofile` raised |
 | Data survives restarts | Named `esdata` volume |
 
 > [!NOTE]
@@ -163,10 +165,13 @@ Every line of [`docker-compose.yml`](docker-compose.yml) maps to a requirement:
 | `bootstrap.memory_lock` | `true` | Locks heap in RAM → no swapping |
 | `node.processors` | `4` | Sizes thread pools for the 4-CPU cap |
 | `ulimits.memlock` | `-1 / -1` | Lets memory locking actually work |
+| `ulimits.nofile` | `65536` | Avoids "too many open files" as indices grow |
 | `mem_limit` | `1536m` | Container can never exceed 1.5 GB |
 | `cpus` | `4.0` | Caps ES at 4/8 logical CPUs → host stays responsive |
-| `ports` | `9200:9200` | Exposes ES to host-local NestJS |
+| `ports` | `127.0.0.1:9200:9200` | **Loopback only** — not exposed to LAN (security is off) |
 | `restart` | `unless-stopped` | Survives reboots / daemon restarts |
+| `stop_grace_period` | `60s` | Clean shutdown → no shard corruption / RED |
+| `logging` | `10m × 3` | Caps container logs so they never fill the disk |
 | `volumes` | `esdata:` | Indices persist across `down`/`up` |
 | `healthcheck` | green/yellow | Marks container healthy only when usable |
 
