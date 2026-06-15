@@ -40,7 +40,7 @@
 
 ## 🧭 Overview
 
-This repository provides a **production-of-mind, development-grade** Elasticsearch
+This repository provides a **peace-of-mind, development-grade** Elasticsearch
 environment. It runs **one** Elasticsearch node in Docker and is intentionally
 **not** a cluster. The goal is a database that is:
 
@@ -86,23 +86,42 @@ container), **locking memory to prevent swap**, **disabling unused features**
 ## 🏗 Architecture
 
 ```
-┌──────────────────────────── Host (Elementary OS 8) ────────────────────────────┐
-│                                                                                 │
-│   ┌───────────────┐         http://localhost:9200       ┌────────────────────┐  │
-│   │   NestJS app  │  ───────────────────────────────▶   │  Docker published  │  │
-│   │ (local proc)  │                                      │     port 9200      │  │
-│   └───────────────┘                                      └─────────┬──────────┘  │
-│                                                                    │             │
-│   ┌───────────────┐                                      ┌─────────▼──────────┐  │
-│   │  Redis (Docker│  (independent, untouched)            │   elasticsearch    │  │
-│   │  container)   │                                      │  container 8.12.0  │  │
-│   └───────────────┘                                      │  heap 1g / cap 1.5g│  │
-│                                                           └─────────┬──────────┘  │
-│                                                                     │            │
-│                                                          ┌──────────▼─────────┐  │
-│                                                          │  volume: esdata    │  │
-│                                                          └────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────── Host Machine (Elementary OS 8) ────────────────────────────────┐
+│                                                                                              │
+│   ┌──────────────────────────────┐                                                           │
+│   │   NestJS Application         │                                                           │
+│   │   (Local Process)            │                                                           │
+│   │   Runtime: Node.js           │                                                           │
+│   └───────────────┬──────────────┘                                                           │
+│                   │ HTTP Request                                                             │
+│                   │ http://localhost:9200                                                    │
+│                   ▼                                                                          │
+│   ┌──────────────────────────────────────────────┐                                           │
+│   │        Elasticsearch Container               │                                           │
+│   │        Image: 8.12.0                         │                                           │
+│   │                                              │                                           │
+│   │   • Mode: Single Node                        │                                           │
+│   │   • Heap: 1GB (Xms=1g, Xmx=1g)               │                                           │
+│   │   • Memory Limit: 1.5GB                      │                                           │
+│   │   • Port: 9200                               │                                           │
+│   └───────────────────────────┬──────────────────┘                                           │
+│                               │                                                              │
+│                               ▼                                                              │
+│                ┌────────────────────────────────┐                                            │
+│                │     Persistent Volume          │                                            │
+│                │     esdata (NVMe SSD)          │                                            │
+│                └────────────────────────────────┘                                            │
+│                                                                                              │
+│   ┌──────────────────────────────┐                                                           │
+│   │        Redis Container       │                                                           │
+│   │        (Docker Service)      │                                                           │
+│   │                              │                                                           │
+│   │   • Max Memory: 128–200MB    │                                                           │
+│   │   • Eviction: allkeys-lru    │                                                           │
+│   │   • Port: 6379               │                                                           │
+│   └──────────────────────────────┘                                                           │
+│                                                                                              │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Because NestJS runs **on the host**, it always uses `http://localhost:9200` —
@@ -267,7 +286,7 @@ export class SearchModule {}
 | File | Responsibility |
 |------|----------------|
 | [`search.module.ts`](examples/nestjs/search.module.ts) | Registers the client from `ELASTICSEARCH_NODE` (with retries & timeout). |
-| [`search.service.ts`](examples/nestjs/search.service.ts) | Thin wrapper — health, index, search, delete; logs connectivity on boot. |
+| [`search.service.ts`](examples/nestjs/search.service.ts) | Performance-conscious wrapper — single-doc CRUD, **bulk index/update/delete**, count, paginated & streaming search (PIT + `search_after`), update/delete-by-query, and index admin. Designed to avoid N+1 loops and deep pagination. |
 | [`search.controller.ts`](examples/nestjs/search.controller.ts) | Demo REST endpoints proving the host → `localhost:9200` round trip. |
 
 > **How to use it:** install the deps, copy these files into your project, import
