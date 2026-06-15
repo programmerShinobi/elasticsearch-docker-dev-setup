@@ -20,6 +20,9 @@ services:
       - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
       # --- Lock heap into RAM to avoid swapping (keeps the host responsive) ---
       - bootstrap.memory_lock=true
+      # --- Match thread pools to the CPU cap below (i7-1185G7: 4c/8t) so ES
+      #     never sizes itself for all 8 threads and starves IDE/browser/NestJS ---
+      - node.processors=4
 
     # Required for bootstrap.memory_lock=true to actually lock memory.
     ulimits:
@@ -30,6 +33,11 @@ services:
     # Hard cap so Elasticsearch can never starve the host (1.5GB).
     # Heap is 1GB; the remaining ~0.5GB covers JVM/off-heap overhead.
     mem_limit: 1536m
+
+    # CPU cap: 4 of the 8 logical CPUs (i7-1185G7 = 4 cores / 8 threads).
+    # Keeps ES at <=50% CPU so the host stays responsive while multitasking,
+    # honoring the "no sustained CPU above 80%" rule even during bulk indexing.
+    cpus: 4.0
 
     ports:
       # host:container — exposes ES to the local NestJS process via localhost.
