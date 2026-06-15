@@ -1,0 +1,56 @@
+# Single-node Elasticsearch for LOCAL DEVELOPMENT only.
+# - Security disabled (dev mode), no Kibana, no clustering, no ML.
+# - Reachable from a host-local NestJS process at http://localhost:9200.
+# See README.md and docs/ before running.
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    restart: unless-stopped
+
+    environment:
+      # --- Single node, no clustering ---
+      - discovery.type=single-node
+      # --- Dev mode: security OFF so http://localhost:9200 works with no TLS/auth ---
+      - xpack.security.enabled=false
+      # --- Disable ML features (saves memory, not needed for dev) ---
+      - xpack.ml.enabled=false
+      # --- JVM heap fixed at 1GB (min == max, recommended by Elastic) ---
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      # --- Lock heap into RAM to avoid swapping (keeps the host responsive) ---
+      - bootstrap.memory_lock=true
+
+    # Required for bootstrap.memory_lock=true to actually lock memory.
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+    # Hard cap so Elasticsearch can never starve the host (1.5GB).
+    # Heap is 1GB; the remaining ~0.5GB covers JVM/off-heap overhead.
+    mem_limit: 1536m
+
+    ports:
+      # host:container — exposes ES to the local NestJS process via localhost.
+      - "9200:9200"
+
+    volumes:
+      # Named volume keeps indices across container restarts.
+      - esdata:/usr/share/elasticsearch/data
+
+    healthcheck:
+      # Container is "healthy" once the cluster reports green or yellow.
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'",
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+
+volumes:
+  esdata:
+    driver: local
