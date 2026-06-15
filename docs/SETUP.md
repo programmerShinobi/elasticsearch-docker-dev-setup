@@ -2,6 +2,9 @@
 
 Step-by-step installation of single-node Elasticsearch for local development.
 
+> New to Docker or Elasticsearch? Read the **[Beginner's Tutorial](TUTORIAL.md)**
+> first — it explains every term, then sends you back here for the formal steps.
+
 ---
 
 ## 1. Prerequisites
@@ -23,6 +26,10 @@ sudo usermod -aG docker "$USER"
 ---
 
 ## 2. Prepare the host kernel parameter
+
+> **Linux only.** On **macOS / Windows**, Docker Desktop sets this inside its own
+> VM — skip this section entirely and go to step 3. (The helper script in
+> Option A detects a non-Linux host and exits cleanly, so it's safe to run too.)
 
 Elasticsearch refuses to start unless `vm.max_map_count >= 262144`.
 
